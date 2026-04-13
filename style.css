@@ -63,6 +63,33 @@ body {
   line-height: 1.5;
 }
 
+/* Toggle für die Tagesauswahl (Heute/Morgen) */
+.date-toggle {
+  display: inline-flex;
+  border: 1px solid var(--accent);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+.date-toggle button {
+  background: transparent;
+  border: none;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  outline: none;
+}
+.date-toggle button.active {
+  background-color: var(--accent);
+  color: #ffffff;
+}
+.date-toggle button:not(.active):hover {
+  background-color: var(--accent-2);
+  color: var(--text);
+}
+
 /* Anzeige der aktuellen Uhrzeit unterhalb des Headers */
 .current-time {
   margin-top: 6px;

@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="style.css" />
     <!-- Google Fonts für eine freundlichere und verspieltere Schriftart -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Quicksand:wght@400;600&display=swap" rel="stylesheet" />
+    <!-- Web‑App Icons für iOS/Android -->
+    <link rel="icon" type="image/png" sizes="180x180" href="icon-180.png" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <meta name="theme-color" content="#b7d3f5" />
     <!-- Chart.js für die Mini‑Diagramme -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Haupt‑Javascript -->
@@ -17,7 +21,12 @@
     <main class="app-shell">
       <header class="hero">
         <p class="eyebrow">DailyWear</p>
-        <h1>Heute in Gießen &amp; Frankfurt</h1>
+        <h1 id="title-day">Heute in Gießen &amp; Frankfurt</h1>
+        <!-- Umschalter zwischen heute und morgen -->
+        <nav class="date-toggle" id="date-toggle">
+          <button data-offset="0" class="active">Heute</button>
+          <button data-offset="1">Morgen</button>
+        </nav>
         <!-- Aktuelle Uhrzeit wird durch das Skript gesetzt -->
         <p id="current-time" class="current-time"></p>
       </header>

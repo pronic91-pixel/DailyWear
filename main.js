@@ -47,12 +47,41 @@ const cardsEl = document.getElementById("cards");
 // Element für die aktuelle Uhrzeit aus dem DOM
 const currentTimeEl = document.getElementById("current-time");
 
-// Aktualisiert die Anzeige der aktuellen Uhrzeit
+// Element für den Titel (heute/morgen) und das Datums‑Toggle
+const titleDayEl = document.getElementById("title-day");
+const dateToggleEl = document.getElementById("date-toggle");
+
+// Aktuell ausgewählter Tag (0 = heute, 1 = morgen)
+let dayOffset = 0;
+
+// Aktualisiert die Anzeige der aktuellen Uhrzeit und den Titel passend zum gewählten Tag
 function updateCurrentTime() {
   if (!currentTimeEl) return;
   const now = new Date();
   const options = { hour: "2-digit", minute: "2-digit" };
-  currentTimeEl.textContent = `Aktualisiert um ${now.toLocaleTimeString("de-DE", options)}`;
+  const timeStr = now.toLocaleTimeString("de-DE", options);
+  // Zeige „Vorhersage für morgen“ wenn morgen ausgewählt ist
+  if (dayOffset === 0) {
+    currentTimeEl.textContent = `Aktualisiert um ${timeStr}`;
+    if (titleDayEl) titleDayEl.textContent = `Heute in Gießen & Frankfurt`;
+  } else {
+    currentTimeEl.textContent = `Vorhersage für morgen – aktualisiert um ${timeStr}`;
+    if (titleDayEl) titleDayEl.textContent = `Morgen in Gießen & Frankfurt`;
+  }
+}
+
+// Aktualisiert die Darstellung der Tagesauswahl (active‑Klasse)
+function updateDayToggle() {
+  if (!dateToggleEl) return;
+  const buttons = dateToggleEl.querySelectorAll("button");
+  buttons.forEach((btn) => {
+    const offset = parseInt(btn.dataset.offset);
+    if (offset === dayOffset) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
 }
 
 // Hilfsfunktionen
@@ -135,19 +164,21 @@ function analyze(rows) {
 }
 
 // Fenster der Stunden von jetzt bis 18:00 (oder erste 8 Stunden, falls später)
-function getWindowedHours(hourly) {
+function getWindowedHours(hourly, offset = 0) {
   const now = new Date();
-  // Wir betrachten die Stunden zwischen 6 und 20 Uhr – wenn wir bereits später als 6 Uhr sind, starten wir ab jetzt
+  // Berechne Start- und Endzeit für den gewünschten Tag (offset Tage in der Zukunft)
   const start = new Date(now);
+  start.setDate(start.getDate() + offset);
   start.setHours(6, 0, 0, 0);
   const end = new Date(now);
+  end.setDate(end.getDate() + offset);
   end.setHours(20, 0, 0, 0);
 
   const rows = [];
   for (let i = 0; i < hourly.time.length; i++) {
     const time = new Date(hourly.time[i]);
-    // Berücksichtige nur Stunden zwischen start und end
-    if (time >= start && time <= end) {
+    // Berücksichtige nur Stunden des Zieltages zwischen 6 und 20 Uhr
+    if (time >= start && time <= end && time.getDate() === start.getDate()) {
       rows.push({
         time,
         apparent: hourly.apparent_temperature[i],
@@ -158,17 +189,26 @@ function getWindowedHours(hourly) {
       });
     }
   }
-  // Falls das aktuelle Datum früher als 6 Uhr ist oder es noch keine Daten im Fenster gibt, nimm die ersten 12 Stunden des Tages
+  // Falls keine Daten im Fenster existieren (z. B. sehr frühe oder späte Uhrzeit), wähle die ersten 12 Stunden des gewünschten Tages
   if (rows.length === 0) {
-    for (let i = 0; i < Math.min(12, hourly.time.length); i++) {
-      rows.push({
-        time: new Date(hourly.time[i]),
-        apparent: hourly.apparent_temperature[i],
-        temperature: hourly.temperature_2m[i],
-        wind: hourly.windspeed_10m[i],
-        rainProbability: hourly.precipitation_probability[i],
-        code: hourly.weather_code[i]
-      });
+    let count = 0;
+    for (let i = 0; i < hourly.time.length && count < 12; i++) {
+      const time = new Date(hourly.time[i]);
+      const dayDiff = time.getDate() - now.getDate();
+      // Passe dayDiff für Monatswechsel an
+      let targetDate = new Date(now);
+      targetDate.setDate(targetDate.getDate() + offset);
+      if (time.getDate() === targetDate.getDate()) {
+        rows.push({
+          time,
+          apparent: hourly.apparent_temperature[i],
+          temperature: hourly.temperature_2m[i],
+          wind: hourly.windspeed_10m[i],
+          rainProbability: hourly.precipitation_probability[i],
+          code: hourly.weather_code[i]
+        });
+        count++;
+      }
     }
   }
   return rows;
@@ -195,7 +235,7 @@ async function fetchCityWeather(city) {
     throw new Error("Wetterdaten konnten nicht geladen werden");
   }
   const data = await response.json();
-  const rows = getWindowedHours(data.hourly);
+  const rows = getWindowedHours(data.hourly, dayOffset);
   return { city, rows, analysis: analyze(rows) };
 }
 
@@ -370,5 +410,25 @@ async function loadAll() {
   }
 }
 
+// Initialisiere die Umschalter
+function initDayToggle() {
+  if (!dateToggleEl) return;
+  dateToggleEl.addEventListener("click", (e) => {
+    const target = e.target;
+    if (target && target.tagName === "BUTTON") {
+      const offset = parseInt(target.dataset.offset);
+      if (!isNaN(offset) && offset !== dayOffset) {
+        dayOffset = offset;
+        updateDayToggle();
+        loadAll();
+      }
+    }
+  });
+  // Setze die initiale active‑Klasse
+  updateDayToggle();
+}
+
 // Starte direkt beim Laden der Seite
 loadAll();
+// Initialisiere den Tagesumschalter
+initDayToggle();
