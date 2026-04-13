@@ -220,35 +220,6 @@ function renderCard(result, index) {
         <span class="quick-value">${Math.round(analysis.rainiest.rainProbability)} %</span>
       </div>
     </div>
-    <h3 class="section-title">Empfehlung</h3>
-    <div class="outfit-grid">
-      <section class="outfit-group">
-        <h3>Oberteil</h3>
-        <div class="outfit-list">
-          ${analysis.outfit.top.map((item) => `<span class="chip">${item}</span>`).join("")}
-        </div>
-      </section>
-      <section class="outfit-group">
-        <h3>Jacke</h3>
-        <div class="outfit-list">
-          ${analysis.outfit.outer.map((item) => `<span class="chip">${item}</span>`).join("")}
-        </div>
-      </section>
-      <section class="outfit-group">
-        <h3>Unten</h3>
-        <div class="outfit-list">
-          ${analysis.outfit.bottom.map((item) => `<span class="chip">${item}</span>`).join("")}
-        </div>
-      </section>
-      <section class="outfit-group">
-        <h3>Extras</h3>
-        <div class="outfit-list">
-          ${analysis.outfit.extras.length > 0
-            ? analysis.outfit.extras.map((item) => `<span class="chip">${item}</span>`).join("")
-            : `<span class="chip">–</span>`}
-        </div>
-      </section>
-    </div>
     <p class="reason">
       Grundlage: gefühlt niedrigste Temperatur ${analysis.coldest.apparent.toFixed(1)} °C,
       Wind bis ${Math.round(analysis.windiest.wind)} km/h und Regenrisiko bis
@@ -330,6 +301,45 @@ function renderCard(result, index) {
   });
 }
 
+// Zeigt die gemeinsame Outfit‑Empfehlung für beide Städte an
+function renderCombinedOutfit(outfit, needLevel) {
+  const resultEl = document.getElementById("outfit-result");
+  if (!resultEl) return;
+  resultEl.innerHTML = `
+    <article class="outfit-card">
+      <h2>Empfohlenes Outfit</h2>
+      <div class="outfit-grid">
+        <section class="outfit-group">
+          <h3>Oberteil</h3>
+          <div class="outfit-list">
+            ${outfit.top.map((item) => `<span class="chip">${item}</span>`).join("")}
+          </div>
+        </section>
+        <section class="outfit-group">
+          <h3>Jacke</h3>
+          <div class="outfit-list">
+            ${outfit.outer.map((item) => `<span class="chip">${item}</span>`).join("")}
+          </div>
+        </section>
+        <section class="outfit-group">
+          <h3>Hose</h3>
+          <div class="outfit-list">
+            ${outfit.bottom.map((item) => `<span class="chip">${item}</span>`).join("")}
+          </div>
+        </section>
+        <section class="outfit-group">
+          <h3>Extras</h3>
+          <div class="outfit-list">
+            ${outfit.extras.length > 0
+              ? outfit.extras.map((item) => `<span class="chip">${item}</span>`).join("")
+              : `<span class="chip">–</span>`}
+          </div>
+        </section>
+      </div>
+    </article>
+  `;
+}
+
 // Hauptfunktion: lädt alle Städte und zeichnet die Karten
 async function loadAll() {
   cardsEl.innerHTML = "";
@@ -338,6 +348,10 @@ async function loadAll() {
   try {
     const results = await Promise.all(cities.map(fetchCityWeather));
     results.forEach((result, index) => renderCard(result, index));
+    // Bestimme den höchsten Bedarf zwischen den Städten und zeige eine gemeinsame Outfit‑Empfehlung
+    const maxNeed = Math.max(...results.map((r) => r.analysis.needLevel));
+    const combinedOutfit = buildOutfit(maxNeed);
+    renderCombinedOutfit(combinedOutfit, maxNeed);
   } catch (error) {
     cardsEl.innerHTML = `<article class="city-card"><div class="error">${error.message}</div></article>`;
   }
