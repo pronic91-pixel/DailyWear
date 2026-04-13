@@ -11,22 +11,22 @@
 
 :root {
   color-scheme: light;
-  /* Pastellfarben für eine sanftere Optik */
-  --bg: #f0f4fb;
+  /* Pastellfarben für eine noch sanftere Optik – Puderpink und Babyblau */
+  --bg: #f9f7fc; /* helles, leicht rosiges Weiß */
   --panel: #ffffff;
-  --panel-border: rgba(0, 0, 0, 0.07);
-  --text: #2d3a4a;
-  --muted: #6c7b8a;
-  --accent: #bfd7ff; /* Babyblau */
-  --accent-2: #f8c1d8; /* Rosa */
-  --chip: #f3f6fb;
+  --panel-border: rgba(0, 0, 0, 0.05);
+  --text: #2d3559; /* dunkles Blau für bessere Lesbarkeit */
+  --muted: #6c6d8d; /* abgetöntes Lila/Blau */
+  --accent: #b7d3f5; /* sehr helles Babyblau */
+  --accent-2: #f5b4d6; /* Puder‑Rosaton */
+  --chip: #f8f4fb; /* zart getöntes Panel für Chips */
   --shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Poppins', Inter, Arial, sans-serif;
+  font-family: 'Quicksand', 'Poppins', Inter, Arial, sans-serif;
   color: var(--text);
   background-color: var(--bg);
 }

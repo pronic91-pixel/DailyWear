@@ -112,17 +112,26 @@ function buildOutfit(level) {
 
 // Aus den benötigten Stundendaten den schlechtesten (höchsten Bedarf) ermitteln und Auswertung zusammenstellen.
 function analyze(rows) {
-  // Kälteste gefühlte Temperatur, stärkster Wind, höchstes Regenrisiko
+  // Kälteste gefühlte Temperatur, stärkster Wind, höchstes Regenrisiko und wärmster Punkt
   const coldest = rows.reduce((a, b) => (b.apparent < a.apparent ? b : a));
   const windiest = rows.reduce((a, b) => (b.wind > a.wind ? b : a));
   const rainiest = rows.reduce((a, b) => (b.rainProbability > a.rainProbability ? b : a));
+  const hottest = rows.reduce((a, b) => (b.apparent > a.apparent ? b : a));
+  // berechne Basislevel für jede Stunde
   const baseNeed = Math.max(
     ...rows.map((row) => calculateNeed(row.apparent, row.wind, row.rainProbability))
   );
   // erhöhe das Bedürfnis um 1 Stufe, damit die Empfehlungen etwas wärmer werden
-  const needLevel = Math.min(baseNeed + 1, 8);
+  let needLevel = Math.min(baseNeed + 1, 8);
+  // Sommerlogik: bei hohen Tageshöchstwerten reduzieren
+  const maxTemp = hottest.apparent;
+  if (maxTemp >= 27) {
+    needLevel = Math.max(1, needLevel - 2);
+  } else if (maxTemp >= 24) {
+    needLevel = Math.max(1, needLevel - 1);
+  }
   const outfit = buildOutfit(needLevel);
-  return { coldest, windiest, rainiest, needLevel, outfit };
+  return { coldest, windiest, rainiest, hottest, needLevel, outfit };
 }
 
 // Fenster der Stunden von jetzt bis 18:00 (oder erste 8 Stunden, falls später)
@@ -208,22 +217,26 @@ function renderCard(result, index) {
     </div>
     <div class="quick-grid">
       <div class="quick-item">
-        <span class="quick-label">kältester Punkt</span>
-        <span class="quick-value">${analysis.coldest.apparent.toFixed(1)} °C</span>
+        <span class="quick-label">🌡️ kältester Punkt</span>
+        <span class="quick-value">${analysis.coldest.apparent.toFixed(1)} °C</span>
       </div>
       <div class="quick-item">
-        <span class="quick-label">stärkster Wind</span>
-        <span class="quick-value">${Math.round(analysis.windiest.wind)} km/h</span>
+        <span class="quick-label">🔥 wärmster Punkt</span>
+        <span class="quick-value">${analysis.hottest.apparent.toFixed(1)} °C</span>
       </div>
       <div class="quick-item">
-        <span class="quick-label">Regenrisiko</span>
-        <span class="quick-value">${Math.round(analysis.rainiest.rainProbability)} %</span>
+        <span class="quick-label">💨 stärkster Wind</span>
+        <span class="quick-value">${Math.round(analysis.windiest.wind)} km/h</span>
+      </div>
+      <div class="quick-item">
+        <span class="quick-label">🌧️ Regenrisiko</span>
+        <span class="quick-value">${Math.round(analysis.rainiest.rainProbability)} %</span>
       </div>
     </div>
     <p class="reason">
-      Grundlage: gefühlt niedrigste Temperatur ${analysis.coldest.apparent.toFixed(1)} °C,
-      Wind bis ${Math.round(analysis.windiest.wind)} km/h und Regenrisiko bis
-      ${Math.round(analysis.rainiest.rainProbability)} %.
+      Grundlage: kältester Punkt ${analysis.coldest.apparent.toFixed(1)} °C, wärmster Punkt ${analysis.hottest.apparent.toFixed(1)} °C,
+      Wind bis ${Math.round(analysis.windiest.wind)} km/h und Regenrisiko bis
+      ${Math.round(analysis.rainiest.rainProbability)} %.
     </p>
     <div class="chart-wrap">
       <canvas id="chart-${index}" height="160"></canvas>
@@ -240,10 +253,10 @@ function renderCard(result, index) {
       ),
       datasets: [
         {
-          label: "gefühlt",
+          label: "gefühlte Temperatur",
           data: rows.map((row) => row.apparent),
-          borderColor: "#3b82f6",
-          backgroundColor: "rgba(59, 130, 246, 0.1)",
+          borderColor: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#b7d3f5",
+          backgroundColor: "rgba(183, 211, 245, 0.2)",
           fill: true,
           tension: 0.35,
           pointRadius: 2
@@ -251,8 +264,8 @@ function renderCard(result, index) {
         {
           label: "Regenrisiko %",
           data: rows.map((row) => row.rainProbability),
-          borderColor: "#86efac",
-          backgroundColor: "rgba(134, 239, 172, 0.1)",
+          borderColor: getComputedStyle(document.documentElement).getPropertyValue("--accent-2").trim() || "#f5b4d6",
+          backgroundColor: "rgba(245, 180, 214, 0.2)",
           fill: false,
           tension: 0.35,
           pointRadius: 2,
