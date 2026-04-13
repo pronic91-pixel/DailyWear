@@ -1,315 +1,329 @@
-/*
- * Einfacher Outfit-Beratungsclient
- *
- * Dieser Code nutzt die Open‑Meteo API (https://open-meteo.com/) um stündliche
- * Wetterdaten abzurufen. Anschließend wird eine einfache Regelengine
- * verwendet, die aufgrund von Temperatur, Wind, Regen und individueller
- * Kälteempfindlichkeit eine Outfit-Empfehlung generiert.
- */
-
-const form = document.getElementById("location-form");
-const resultContainer = document.getElementById("result");
-const weatherSummaryEl = document.getElementById("weather-summary");
-const outfitRecEl = document.getElementById("outfit-recommendation");
-const explanationEl = document.getElementById("explanation");
-
-// Beispielhafter Kältefaktor: höher = friert schneller
-const personalColdFactor = 1; // Wert zwischen 0 und 2, 1 = normal, >1 = friert schneller
-
-// Kleine Outfit-Datenbank für Kategorien
-const clothingItems = [
-  {
-    name: "T‑Shirt",
-    category: "top",
-    warmth: 1,
-    wind: 1,
-    rain: 0
-  },
-  {
-    name: "Langarmshirt",
-    category: "top",
-    warmth: 2,
-    wind: 1,
-    rain: 0
-  },
-  {
-    name: "Pullover (dünn)",
-    category: "top",
-    warmth: 3,
-    wind: 2,
-    rain: 0
-  },
-  {
-    name: "Pullover (dick)",
-    category: "top",
-    warmth: 5,
-    wind: 3,
-    rain: 0
-  },
-  {
-    name: "Übergangsjacke",
-    category: "outer",
-    warmth: 3,
-    wind: 4,
-    rain: 2
-  },
-  {
-    name: "Dünne Jacke",
-    category: "outer",
-    warmth: 2,
-    wind: 3,
-    rain: 1
-  },
-  {
-    name: "Winterjacke",
-    category: "outer",
-    warmth: 6,
-    wind: 5,
-    rain: 3
-  },
-  {
-    name: "Wintermantel (lang)",
-    category: "outer",
-    warmth: 7,
-    wind: 6,
-    rain: 3
-  },
-  {
-    name: "Jeans",
-    category: "bottom",
-    warmth: 2,
-    wind: 2,
-    rain: 0
-  },
-  {
-    name: "Stoffhose",
-    category: "bottom",
-    warmth: 2,
-    wind: 1,
-    rain: 0
-  },
-  {
-    name: "Rock + Strumpfhose",
-    category: "bottom",
-    warmth: 3,
-    wind: 2,
-    rain: 0
-  },
-  {
-    name: "Schal (dünn)",
-    category: "accessory",
-    warmth: 2,
-    wind: 2,
-    rain: 0
-  },
-  {
-    name: "Schal (mittel)",
-    category: "accessory",
-    warmth: 4,
-    wind: 3,
-    rain: 0
-  },
-  {
-    name: "Schal (dick)",
-    category: "accessory",
-    warmth: 6,
-    wind: 4,
-    rain: 0
-  },
-  {
-    name: "Mütze",
-    category: "accessory",
-    warmth: 2,
-    wind: 2,
-    rain: 0
-  },
-  {
-    name: "Handschuhe",
-    category: "accessory",
-    warmth: 2,
-    wind: 1,
-    rain: 0
-  }
+const cities = [
+  { name: "Gießen", latitude: 50.5841, longitude: 8.6784 },
+  { name: "Frankfurt", latitude: 50.1109, longitude: 8.6821 }
 ];
 
-// Hilfsfunktion zum Berechnen der benötigten Wärmestufe
-function calculateNeededWarmth(temp, wind, rain, timeOfDay) {
-  // Basierend auf gefühlter Temperatur (temp) und Wind steigert sich der Bedarf
-  let base = 0;
-  if (temp >= 20) {
-    base = 1;
-  } else if (temp >= 15) {
-    base = 2;
-  } else if (temp >= 10) {
-    base = 3;
-  } else if (temp >= 5) {
-    base = 4;
-  } else if (temp >= 0) {
-    base = 5;
+const clothingCatalog = {
+  lightTop: ["T Shirt", "Langarmshirt"],
+  warmTop: ["Langarmshirt", "dünner Pullover", "dicker Pullover"],
+  lightOuter: ["dünne Jacke", "Übergangsjacke"],
+  warmOuter: ["Übergangsjacke", "Winterjacke", "langer Wintermantel"],
+  bottomLight: ["Jeans", "Stoffhose"],
+  bottomWarm: ["Jeans", "Rock mit Strumpfhose"],
+  extras: ["Schal", "Mütze", "Handschuhe", "Wärmeflasche optional"]
+};
+
+const cardsEl = document.getElementById("cards");
+
+function scoreToPercent(level) {
+  return Math.max(62, Math.min(96, Math.round(96 - Math.max(0, level - 2) * 6)));
+}
+
+function describeWeather(code) {
+  const map = {
+    0: "klar",
+    1: "überwiegend klar",
+    2: "leicht bewölkt",
+    3: "bewölkt",
+    45: "neblig",
+    48: "Raureifnebel",
+    51: "leichter Niesel",
+    53: "Niesel",
+    55: "starker Niesel",
+    61: "leichter Regen",
+    63: "Regen",
+    65: "starker Regen",
+    71: "leichter Schnee",
+    73: "Schnee",
+    75: "starker Schnee",
+    80: "Regenschauer",
+    81: "kräftige Schauer",
+    82: "starke Schauer",
+    95: "Gewitter"
+  };
+  return map[code] || "wechselhaft";
+}
+
+function calculateNeed(apparentTemp, wind, rainProbability) {
+  let level;
+  if (apparentTemp >= 20) level = 1;
+  else if (apparentTemp >= 15) level = 2;
+  else if (apparentTemp >= 10) level = 3;
+  else if (apparentTemp >= 5) level = 4;
+  else if (apparentTemp >= 0) level = 5;
+  else level = 6;
+
+  if (wind >= 20) level += 1;
+  if (wind >= 35) level += 1;
+  if (rainProbability >= 40) level += 1;
+
+  return Math.min(level, 8);
+}
+
+function buildOutfit(level) {
+  const top = [];
+  const outer = [];
+  const bottom = [];
+  const extras = [];
+
+  if (level <= 2) {
+    top.push("T Shirt oder Langarmshirt");
+    outer.push("dünne Jacke optional");
+    bottom.push("Jeans oder Stoffhose");
+  } else if (level <= 4) {
+    top.push("Langarmshirt");
+    top.push("dünner Pullover");
+    outer.push("Übergangsjacke");
+    bottom.push("Jeans oder Stoffhose");
+  } else if (level <= 6) {
+    top.push("Langarmshirt");
+    top.push("Pullover");
+    outer.push("Winterjacke");
+    bottom.push("Jeans oder Rock mit Strumpfhose");
+    extras.push("Schal");
   } else {
-    base = 6;
+    top.push("Langarmshirt");
+    top.push("dicker Pullover");
+    outer.push("langer Wintermantel");
+    bottom.push("Jeans oder Rock mit Strumpfhose");
+    extras.push("dicker Schal");
+    extras.push("Mütze");
+    extras.push("Handschuhe");
+    extras.push("Wärmeflasche optional");
   }
 
-  // Wind stärker als 20 km/h erhöht den Bedarf
-  if (wind > 20) base += 1;
-  // Wind sehr stark
-  if (wind > 35) base += 1;
-
-  // Regen erhöht Wärmebedarf wegen Nässe und Komfort
-  if (rain > 30) base += 1;
-  // Persönlicher Kältefaktor
-  base = Math.round(base * personalColdFactor);
-
-  return base;
+  return { top, outer, bottom, extras };
 }
 
-function generateOutfitRecommendation(hourlyData) {
-  // Wir betrachten die Stunden ab jetzt bis 18 Uhr
+function getWindowedHours(hourly) {
   const now = new Date();
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0);
-  const neededWarmthLevels = [];
-  for (let i = 0; i < hourlyData.time.length; i++) {
-    const t = new Date(hourlyData.time[i]);
-    if (t > endOfDay) continue;
+  const end = new Date(now);
+  end.setHours(18, 0, 0, 0);
 
-    const temp = hourlyData.apparent_temperature[i];
-    const wind = hourlyData.windspeed_10m[i];
-    const rain = hourlyData.precipitation_probability[i];
-
-    const level = calculateNeededWarmth(temp, wind, rain, t);
-    neededWarmthLevels.push({ time: t, level, temp, wind, rain });
-  }
-
-  // Wir nehmen das Maximum, um auf Nummer sicher zu gehen (morgens oder abends kann es sehr kalt sein)
-  const maxLevelObj = neededWarmthLevels.reduce((prev, curr) =>
-    curr.level > prev.level ? curr : prev
-  );
-
-  const level = maxLevelObj.level;
-
-  // Auswahl der Kleidungsstücke nach benötigtem Wärmewert
-  // Wir sammeln Top, Bottom, Outer und Accessory separat.
-  const selected = { top: [], bottom: [], outer: [], accessory: [] };
-  let remaining = level;
-
-  // Outerwear hat die stärkste Wirkung; zuerst wählen
-  clothingItems
-    .filter((c) => c.category === "outer")
-    .sort((a, b) => b.warmth - a.warmth)
-    .forEach((item) => {
-      if (remaining > 0 && remaining >= item.warmth - 1) {
-        selected.outer.push(item.name);
-        remaining -= item.warmth;
-      }
-    });
-
-  // Top
-  clothingItems
-    .filter((c) => c.category === "top")
-    .sort((a, b) => b.warmth - a.warmth)
-    .forEach((item) => {
-      if (remaining > 0 && remaining >= item.warmth - 1) {
-        selected.top.push(item.name);
-        remaining -= item.warmth;
-      }
-    });
-
-  // Bottom (ein Kleidungsstück auswählen, reicht)
-  clothingItems
-    .filter((c) => c.category === "bottom")
-    .sort((a, b) => b.warmth - a.warmth)
-    .some((item) => {
-      // Wähle das passendste. Wenn der Level hoch ist, nimm wärmeres.
-      if (level >= 5 && item.warmth >= 3) {
-        selected.bottom.push(item.name);
-        return true;
-      }
-      if (level >= 3 && item.warmth >= 2) {
-        selected.bottom.push(item.name);
-        return true;
-      }
-      if (level < 3) {
-        selected.bottom.push(item.name);
-        return true;
-      }
-      return false;
-    });
-
-  // Accessoires optional
-  if (level >= 4) {
-    // je höher, desto dickerer Schal
-    if (level >= 6) {
-      selected.accessory.push("Schal (dick)");
-    } else if (level >= 5) {
-      selected.accessory.push("Schal (mittel)");
-    } else {
-      selected.accessory.push("Schal (dünn)");
-    }
-  }
-  if (maxLevelObj.temp < 5) {
-    selected.accessory.push("Mütze");
-    selected.accessory.push("Handschuhe");
-  }
-
-  return { selected, neededWarmthLevels, maxLevelObj };
-}
-
-function renderResult(data, recommendation) {
-  // Wetter Zusammenfassung
-  const { maxLevelObj } = recommendation;
-
-  const weatherHtml = `
-    <p><strong>Gefühlte Temperatur (Peak):</strong> ${maxLevelObj.temp.toFixed(
-      1
-    )} °C</p>
-    <p><strong>Wind (max):</strong> ${maxLevelObj.wind} km/h</p>
-    <p><strong>Regenwahrscheinlichkeit (max):</strong> ${maxLevelObj.rain}%</p>
-  `;
-  weatherSummaryEl.innerHTML = weatherHtml;
-
-  // Outfit Empfehlung
-  const { selected } = recommendation;
-  let outfitHtml = "";
-  Object.keys(selected).forEach((category) => {
-    if (selected[category].length > 0) {
-      outfitHtml += `<p><strong>${category.charAt(0).toUpperCase() + category.slice(1)}:</strong></p>`;
-      selected[category].forEach((item) => {
-        outfitHtml += `<div class="outfit-item">${item}</div>`;
+  const rows = [];
+  for (let i = 0; i < hourly.time.length; i += 1) {
+    const time = new Date(hourly.time[i]);
+    if (time >= now && time <= end) {
+      rows.push({
+        time,
+        apparent: hourly.apparent_temperature[i],
+        temperature: hourly.temperature_2m[i],
+        wind: hourly.wind_speed_10m[i],
+        rainProbability: hourly.precipitation_probability[i],
+        code: hourly.weather_code[i]
       });
     }
-  });
-  outfitRecEl.innerHTML = outfitHtml;
-
-  // Erklärung
-  explanationEl.innerHTML = `Aufgrund der niedrigsten gefühlten Temperatur, des stärksten Winds und der Regenwahrscheinlichkeit wurde ein Wärmestufe‑Bedarf von <strong>${recommendation.maxLevelObj.level}</strong> berechnet. Je höher dieser Wert, desto wärmere Kleidung wird empfohlen.`;
-
-  resultContainer.classList.remove("hidden");
-}
-
-async function fetchWeather(lat, lon) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=apparent_temperature,precipitation_probability,windspeed_10m&timezone=Europe%2FBerlin`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Fehler beim Abrufen der Wetterdaten");
-  const data = await res.json();
-  return data.hourly;
-}
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const lat = parseFloat(document.getElementById("lat").value);
-  const lon = parseFloat(document.getElementById("lon").value);
-  try {
-    weatherSummaryEl.innerHTML = "";
-    outfitRecEl.innerHTML = "";
-    explanationEl.innerHTML = "";
-    resultContainer.classList.add("hidden");
-
-    const hourlyData = await fetchWeather(lat, lon);
-    const recommendation = generateOutfitRecommendation(hourlyData);
-    renderResult(hourlyData, recommendation);
-  } catch (err) {
-    weatherSummaryEl.innerHTML = `<p style="color:red">${err.message}</p>`;
-    resultContainer.classList.remove("hidden");
   }
-});
 
+  if (rows.length === 0) {
+    for (let i = 0; i < Math.min(8, hourly.time.length); i += 1) {
+      rows.push({
+        time: new Date(hourly.time[i]),
+        apparent: hourly.apparent_temperature[i],
+        temperature: hourly.temperature_2m[i],
+        wind: hourly.wind_speed_10m[i],
+        rainProbability: hourly.precipitation_probability[i],
+        code: hourly.weather_code[i]
+      });
+    }
+  }
+
+  return rows;
+}
+
+function analyze(rows) {
+  const coldest = rows.reduce((a, b) => (b.apparent < a.apparent ? b : a));
+  const windiest = rows.reduce((a, b) => (b.wind > a.wind ? b : a));
+  const rainiest = rows.reduce((a, b) => (b.rainProbability > a.rainProbability ? b : a));
+  const needLevel = Math.max(...rows.map((row) => calculateNeed(row.apparent, row.wind, row.rainProbability)));
+  const outfit = buildOutfit(needLevel);
+  const score = scoreToPercent(needLevel);
+  return { coldest, windiest, rainiest, needLevel, outfit, score };
+}
+
+async function fetchCityWeather(city) {
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", city.latitude);
+  url.searchParams.set("longitude", city.longitude);
+  url.searchParams.set("timezone", "Europe/Berlin");
+  url.searchParams.set(
+    "hourly",
+    [
+      "temperature_2m",
+      "apparent_temperature",
+      "precipitation_probability",
+      "wind_speed_10m",
+      "weather_code"
+    ].join(",")
+  );
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Wetterdaten konnten nicht geladen werden.");
+  }
+  const data = await response.json();
+  const rows = getWindowedHours(data.hourly);
+  return {
+    city,
+    rows,
+    analysis: analyze(rows)
+  };
+}
+
+function renderCard(result, index) {
+  const { city, rows, analysis } = result;
+
+  const article = document.createElement("article");
+  article.className = "city-card";
+  article.innerHTML = `
+    <div class="card-top">
+      <div>
+        <h2 class="city-title">${city.name}</h2>
+        <p class="city-subtitle">
+          ${describeWeather(rows[0]?.code)} · bis 18 Uhr
+        </p>
+      </div>
+      <div class="score-badge">
+        <strong>${analysis.score}%</strong>
+        <span>passt gut</span>
+      </div>
+    </div>
+
+    <div class="quick-grid">
+      <div class="quick-item">
+        <span class="quick-label">gefühlt kälteste Stunde</span>
+        <span class="quick-value">${analysis.coldest.apparent.toFixed(1)} °C</span>
+      </div>
+      <div class="quick-item">
+        <span class="quick-label">max Wind</span>
+        <span class="quick-value">${Math.round(analysis.windiest.wind)} kmh</span>
+      </div>
+      <div class="quick-item">
+        <span class="quick-label">max Regenrisiko</span>
+        <span class="quick-value">${Math.round(analysis.rainiest.rainProbability)}%</span>
+      </div>
+    </div>
+
+    <h3 class="section-title">Empfehlung</h3>
+    <div class="outfit-grid">
+      <section class="outfit-group">
+        <h3>Oberteil</h3>
+        <div class="outfit-list">
+          ${analysis.outfit.top.map((item) => `<span class="chip">${item}</span>`).join("")}
+        </div>
+      </section>
+      <section class="outfit-group">
+        <h3>Jacke</h3>
+        <div class="outfit-list">
+          ${analysis.outfit.outer.map((item) => `<span class="chip">${item}</span>`).join("")}
+        </div>
+      </section>
+      <section class="outfit-group">
+        <h3>Unten</h3>
+        <div class="outfit-list">
+          ${analysis.outfit.bottom.map((item) => `<span class="chip">${item}</span>`).join("")}
+        </div>
+      </section>
+      <section class="outfit-group">
+        <h3>Extras</h3>
+        <div class="outfit-list">
+          ${(analysis.outfit.extras.length ? analysis.outfit.extras : ["nichts extra nötig"])
+            .map((item) => `<span class="chip">${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+
+    <p class="reason">
+      Grundlage: kälteste gefühlte Temperatur bei ${analysis.coldest.apparent.toFixed(1)} °C,
+      Wind bis ${Math.round(analysis.windiest.wind)} kmh und Regenrisiko bis
+      ${Math.round(analysis.rainiest.rainProbability)}%.
+    </p>
+
+    <div class="chart-wrap">
+      <canvas id="chart-${index}" height="160"></canvas>
+    </div>
+  `;
+
+  cardsEl.appendChild(article);
+
+  const ctx = article.querySelector(`#chart-${index}`);
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: rows.map((row) =>
+        row.time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+      ),
+      datasets: [
+        {
+          label: "gefühlt",
+          data: rows.map((row) => row.apparent),
+          borderColor: "#8fb7ff",
+          backgroundColor: "rgba(143, 183, 255, 0.18)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 2
+        },
+        {
+          label: "Regenrisiko %",
+          data: rows.map((row) => row.rainProbability),
+          borderColor: "#b8f2e6",
+          backgroundColor: "rgba(184, 242, 230, 0.08)",
+          fill: false,
+          tension: 0.25,
+          pointRadius: 1.5,
+          yAxisID: "y1"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: "#d1d5db"
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#9ca3af" },
+          grid: { color: "rgba(255,255,255,0.06)" }
+        },
+        y: {
+          ticks: { color: "#9ca3af" },
+          grid: { color: "rgba(255,255,255,0.06)" },
+          title: {
+            display: true,
+            text: "°C",
+            color: "#9ca3af"
+          }
+        },
+        y1: {
+          position: "right",
+          min: 0,
+          max: 100,
+          ticks: { color: "#9ca3af" },
+          grid: { drawOnChartArea: false },
+          title: {
+            display: true,
+            text: "%",
+            color: "#9ca3af"
+          }
+        }
+      }
+    }
+  });
+}
+
+async function loadAll() {
+  cardsEl.innerHTML = "";
+  try {
+    const results = await Promise.all(cities.map(fetchCityWeather));
+    results.forEach((result, index) => renderCard(result, index));
+  } catch (error) {
+    cardsEl.innerHTML = `<article class="city-card"><div class="error">${error.message}</div></article>`;
+  }
+}
+
+loadAll();
