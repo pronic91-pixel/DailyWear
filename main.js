@@ -116,13 +116,13 @@ function analyze(rows) {
   const coldest = rows.reduce((a, b) => (b.apparent < a.apparent ? b : a));
   const windiest = rows.reduce((a, b) => (b.wind > a.wind ? b : a));
   const rainiest = rows.reduce((a, b) => (b.rainProbability > a.rainProbability ? b : a));
-  const needLevel = Math.max(
+  const baseNeed = Math.max(
     ...rows.map((row) => calculateNeed(row.apparent, row.wind, row.rainProbability))
   );
+  // erhöhe das Bedürfnis um 1 Stufe, damit die Empfehlungen etwas wärmer werden
+  const needLevel = Math.min(baseNeed + 1, 8);
   const outfit = buildOutfit(needLevel);
-  // Score Prozent: höherer Bedarf → niedrigerer Prozentwert
-  const score = Math.max(60, Math.min(96, Math.round(96 - Math.max(0, needLevel - 2) * 6)));
-  return { coldest, windiest, rainiest, needLevel, outfit, score };
+  return { coldest, windiest, rainiest, needLevel, outfit };
 }
 
 // Fenster der Stunden von jetzt bis 18:00 (oder erste 8 Stunden, falls später)
@@ -204,10 +204,6 @@ function renderCard(result, index) {
       <div>
         <h2 class="city-title">${city.name}</h2>
         <p class="city-subtitle">${emoji} heute</p>
-      </div>
-      <div class="score-badge">
-        <strong>${analysis.score}%</strong>
-        <span>passt gut</span>
       </div>
     </div>
     <div class="quick-grid">
