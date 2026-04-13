@@ -1,31 +1,26 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DailyWear</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script defer src="main.js"></script>
-</head>
-<body>
-  <main class="app-shell">
-    <header class="hero">
-      <p class="eyebrow">DailyWear</p>
-      <h1>Heute in Gießen und Frankfurt</h1>
-      <p class="hero-copy">
-        Wetter, gefühlte Temperatur und eine einfache Outfit Empfehlung für beide Städte.
-      </p>
-    </header>
-
-    <section class="cards" id="cards">
-      <article class="city-card">
-        <div class="loading">Lade Gießen ...</div>
-      </article>
-      <article class="city-card">
-        <div class="loading">Lade Frankfurt ...</div>
-      </article>
-    </section>
-  </main>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DailyWear – Outfit & Wetter</title>
+    <!-- Stildefinitionen -->
+    <link rel="stylesheet" href="style.css" />
+    <!-- Chart.js für die Mini‑Diagramme -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Haupt‑Javascript -->
+    <script defer src="main.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">DailyWear</p>
+        <h1>Heute in Gießen &amp; Frankfurt</h1>
+        <p class="hero-copy">
+          Tagesverlauf der Temperatur, Regenwahrscheinlichkeit und klare Outfit‑Empfehlungen – ganz ohne Eingabe.
+        </p>
+      </header>
+      <section class="cards" id="cards"></section>
+    </main>
+  </body>
 </html>
