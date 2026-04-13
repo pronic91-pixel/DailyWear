@@ -44,6 +44,17 @@ const weatherEmojis = {
 // DOM‑Elemente
 const cardsEl = document.getElementById("cards");
 
+// Element für die aktuelle Uhrzeit aus dem DOM
+const currentTimeEl = document.getElementById("current-time");
+
+// Aktualisiert die Anzeige der aktuellen Uhrzeit
+function updateCurrentTime() {
+  if (!currentTimeEl) return;
+  const now = new Date();
+  const options = { hour: "2-digit", minute: "2-digit" };
+  currentTimeEl.textContent = `Aktualisiert um ${now.toLocaleTimeString("de-DE", options)}`;
+}
+
 // Hilfsfunktionen
 
 // Bestimmt eine grobe Skala (1–8) des Kleidungbedarfs anhand Temperatur, Wind und Regen.
@@ -73,25 +84,26 @@ function buildOutfit(level) {
   if (level <= 2) {
     top.push("T‑Shirt", "leichtes Langarmshirt");
     outer.push("keine Jacke nötig");
-    bottom.push("Jeans oder Stoffhose");
+    // Bei warmen Temperaturen können auch Shorts getragen werden
+    bottom.push("Jeans", "Stoffhose", "Shorts");
   } else if (level <= 4) {
     top.push("Langarmshirt", "dünner Pullover");
     outer.push("leichte Jacke");
-    bottom.push("Jeans oder Stoffhose");
+    bottom.push("Jeans", "Stoffhose");
   } else if (level <= 5) {
     top.push("Langarmshirt", "dünner Pullover");
     outer.push("Übergangsjacke");
-    bottom.push("Jeans", "Rock mit Strumpfhose");
+    bottom.push("Jeans", "lange Hose");
     extras.push("leichter Schal");
   } else if (level <= 6) {
     top.push("Langarmshirt", "Pullover");
     outer.push("Winterjacke");
-    bottom.push("Jeans", "Rock mit Strumpfhose");
+    bottom.push("Jeans", "lange Hose");
     extras.push("Schal");
   } else {
     top.push("Langarmshirt", "dicker Pullover");
     outer.push("langer Wintermantel");
-    bottom.push("Jeans", "Rock mit Strumpfhose");
+    bottom.push("Jeans", "lange Hose");
     extras.push("dicker Schal", "Mütze", "Handschuhe");
   }
 
@@ -116,12 +128,17 @@ function analyze(rows) {
 // Fenster der Stunden von jetzt bis 18:00 (oder erste 8 Stunden, falls später)
 function getWindowedHours(hourly) {
   const now = new Date();
+  // Wir betrachten die Stunden zwischen 6 und 20 Uhr – wenn wir bereits später als 6 Uhr sind, starten wir ab jetzt
+  const start = new Date(now);
+  start.setHours(6, 0, 0, 0);
   const end = new Date(now);
-  end.setHours(18, 0, 0, 0);
+  end.setHours(20, 0, 0, 0);
+
   const rows = [];
   for (let i = 0; i < hourly.time.length; i++) {
     const time = new Date(hourly.time[i]);
-    if (time >= now && time <= end) {
+    // Berücksichtige nur Stunden zwischen start und end
+    if (time >= start && time <= end) {
       rows.push({
         time,
         apparent: hourly.apparent_temperature[i],
@@ -132,9 +149,9 @@ function getWindowedHours(hourly) {
       });
     }
   }
-  // Wenn keine Daten im Fenster vorhanden, nimm die nächsten 8 Stunden
+  // Falls das aktuelle Datum früher als 6 Uhr ist oder es noch keine Daten im Fenster gibt, nimm die ersten 12 Stunden des Tages
   if (rows.length === 0) {
-    for (let i = 0; i < Math.min(8, hourly.time.length); i++) {
+    for (let i = 0; i < Math.min(12, hourly.time.length); i++) {
       rows.push({
         time: new Date(hourly.time[i]),
         apparent: hourly.apparent_temperature[i],
@@ -320,6 +337,8 @@ function renderCard(result, index) {
 // Hauptfunktion: lädt alle Städte und zeichnet die Karten
 async function loadAll() {
   cardsEl.innerHTML = "";
+  // Aktuelle Uhrzeit aktualisieren
+  updateCurrentTime();
   try {
     const results = await Promise.all(cities.map(fetchCityWeather));
     results.forEach((result, index) => renderCard(result, index));
