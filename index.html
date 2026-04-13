@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wetter & Outfit Berater</title>
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Wetter & Outfit Berater</h1>
+    <p class="subtitle">
+      Persönliche Outfit‑Empfehlungen basierend auf aktuellen Wetterdaten. Gib deinen
+      Standort ein (Breiten‑ und Längengrad) und klicke auf „Laden“.
+    </p>
+    <form id="location-form">
+      <label>
+        Breitengrad (lat):
+        <input type="number" step="any" id="lat" required placeholder="50.58" />
+      </label>
+      <label>
+        Längengrad (lon):
+        <input type="number" step="any" id="lon" required placeholder="8.67" />
+      </label>
+      <button type="submit">Laden</button>
+    </form>
+    <div id="result" class="hidden">
+      <h2>Empfehlung</h2>
+      <div id="weather-summary"></div>
+      <div id="outfit-recommendation"></div>
+      <div id="explanation"></div>
+    </div>
+  </div>
+</body>
+</html>
