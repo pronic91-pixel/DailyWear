@@ -320,11 +320,11 @@ function renderCard(result, index) {
         <span class="quick-value">${analysis.hottest.apparent.toFixed(1)} °C</span>
       </div>
       <div class="quick-item">
-        <span class="quick-label">🌡️ Tiefsttemperatur</span>
+        <span class="quick-label">🌡️ echte Tiefsttemperatur</span>
         <span class="quick-value">${analysis.coldestTrue.temperature.toFixed(1)} °C</span>
       </div>
       <div class="quick-item">
-        <span class="quick-label">🔥 Höchsttemperatur</span>
+        <span class="quick-label">🔥 echte Höchsttemperatur</span>
         <span class="quick-value">${analysis.hottestTrue.temperature.toFixed(1)} °C</span>
       </div>
       <div class="quick-item">
@@ -336,14 +336,6 @@ function renderCard(result, index) {
         <span class="quick-value">${Math.round(analysis.rainiest.rainProbability)} %</span>
       </div>
     </div>
-    <p class="reason">
-      Grundlage: gefühlte Tiefsttemperatur ${analysis.coldest.apparent.toFixed(1)} °C,
-      gefühlte Höchsttemperatur ${analysis.hottest.apparent.toFixed(1)} °C,
-      Tiefsttemperatur ${analysis.coldestTrue.temperature.toFixed(1)} °C,
-      Höchsttemperatur ${analysis.hottestTrue.temperature.toFixed(1)} °C,
-      Wind bis ${Math.round(analysis.windiest.wind)} km/h und
-      Regenrisiko bis ${Math.round(analysis.rainiest.rainProbability)} %.
-    </p>
     <div class="chart-wrap">
       <canvas id="chart-${index}" height="160"></canvas>
     </div>
