@@ -260,6 +260,77 @@ body {
   color: #dc2626;
 }
 
+/* Hero Actions: Container für Datumsauswahl und Stadt-Hinzufügen */
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  position: relative;
+}
+
+/* Icon Button (Plus-Knopf) */
+.icon-button {
+  background: var(--accent-2);
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  transition: background-color 0.2s ease;
+}
+.icon-button:hover {
+  background-color: var(--accent);
+}
+
+/* Dropdown zum Hinzufügen von Städten */
+.city-selector {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  z-index: 100;
+  min-width: 240px;
+}
+.city-selector.hidden {
+  display: none;
+}
+.city-selector .selector-row {
+  margin-bottom: 12px;
+}
+.city-selector label {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+.city-selector select {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.9rem;
+  appearance: none;
+}
+.city-selector select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 600px) {
   .card-top {

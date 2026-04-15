@@ -8,9 +8,40 @@
  */
 
 // Konfiguration für die Städte (Latitude, Longitude)
-const cities = [
+// Wird als let deklariert, damit weitere Städte dynamisch hinzugefügt werden können
+let cities = [
   { name: "Gießen", latitude: 50.5841, longitude: 8.6784 },
   { name: "Frankfurt", latitude: 50.1109, longitude: 8.6821 }
+];
+
+// Vorauswahl an verfügbaren Städten (nach Ländern gruppiert), um weitere Orte hinzuzufügen.
+// Jede Stadt hat einen Countrycode, den Ländernamen (für Label) und die Geo‑Koordinaten.
+const predefinedCities = [
+  // Deutschland – einige große Städte
+  { countryCode: "DE", countryName: "Deutschland 🇩🇪", name: "Berlin", latitude: 52.52, longitude: 13.405 },
+  { countryCode: "DE", countryName: "Deutschland 🇩🇪", name: "Hamburg", latitude: 53.5511, longitude: 9.9937 },
+  { countryCode: "DE", countryName: "Deutschland 🇩🇪", name: "München", latitude: 48.1351, longitude: 11.5820 },
+  { countryCode: "DE", countryName: "Deutschland 🇩🇪", name: "Köln", latitude: 50.9375, longitude: 6.9603 },
+  { countryCode: "DE", countryName: "Deutschland 🇩🇪", name: "Düsseldorf", latitude: 51.2277, longitude: 6.7735 },
+  { countryCode: "DE", countryName: "Deutschland 🇩🇪", name: "Stuttgart", latitude: 48.7758, longitude: 9.1829 },
+  // Schweiz
+  { countryCode: "CH", countryName: "Schweiz 🇨🇭", name: "Zürich", latitude: 47.3769, longitude: 8.5417 },
+  { countryCode: "CH", countryName: "Schweiz 🇨🇭", name: "Genf", latitude: 46.2044, longitude: 6.1432 },
+  // Österreich
+  { countryCode: "AT", countryName: "Österreich 🇦🇹", name: "Wien", latitude: 48.2082, longitude: 16.3738 },
+  { countryCode: "AT", countryName: "Österreich 🇦🇹", name: "Salzburg", latitude: 47.8095, longitude: 13.0550 },
+  // Frankreich
+  { countryCode: "FR", countryName: "Frankreich 🇫🇷", name: "Paris", latitude: 48.8566, longitude: 2.3522 },
+  { countryCode: "FR", countryName: "Frankreich 🇫🇷", name: "Lyon", latitude: 45.7640, longitude: 4.8357 },
+  // Vereinigtes Königreich
+  { countryCode: "GB", countryName: "Vereinigtes Königreich 🇬🇧", name: "London", latitude: 51.5074, longitude: -0.1278 },
+  { countryCode: "GB", countryName: "Vereinigtes Königreich 🇬🇧", name: "Manchester", latitude: 53.4808, longitude: -2.2426 },
+  // Spanien
+  { countryCode: "ES", countryName: "Spanien 🇪🇸", name: "Madrid", latitude: 40.4168, longitude: -3.7038 },
+  { countryCode: "ES", countryName: "Spanien 🇪🇸", name: "Barcelona", latitude: 41.3874, longitude: 2.1686 },
+  // USA (Beispiel für Auslandsstädte)
+  { countryCode: "US", countryName: "USA 🇺🇸", name: "New York", latitude: 40.7128, longitude: -74.0060 },
+  { countryCode: "US", countryName: "USA 🇺🇸", name: "San Francisco", latitude: 37.7749, longitude: -122.4194 }
 ];
 
 // Zuordnung der Wettercodes zu kleinen Emoji‑Icons
@@ -51,6 +82,12 @@ const currentTimeEl = document.getElementById("current-time");
 const titleDayEl = document.getElementById("title-day");
 const dateToggleEl = document.getElementById("date-toggle");
 
+// Elemente für das Hinzufügen neuer Städte
+const addCityBtn = document.getElementById("add-city-btn");
+const citySelectorEl = document.getElementById("city-selector");
+const countrySelectEl = document.getElementById("country-select");
+const citySelectEl = document.getElementById("city-select");
+
 // Aktuell ausgewählter Tag (0 = heute, 1 = morgen)
 let dayOffset = 0;
 
@@ -63,10 +100,16 @@ function updateCurrentTime() {
   // Zeige „Vorhersage für morgen“ wenn morgen ausgewählt ist
   if (dayOffset === 0) {
     currentTimeEl.textContent = `Aktualisiert um ${timeStr}`;
-    if (titleDayEl) titleDayEl.textContent = `Heute in Gießen & Frankfurt`;
+    if (titleDayEl) {
+      const names = cities.map((c) => c.name).join(" & ");
+      titleDayEl.textContent = `Heute in ${names}`;
+    }
   } else {
     currentTimeEl.textContent = `Vorhersage für morgen – aktualisiert um ${timeStr}`;
-    if (titleDayEl) titleDayEl.textContent = `Morgen in Gießen & Frankfurt`;
+    if (titleDayEl) {
+      const names = cities.map((c) => c.name).join(" & ");
+      titleDayEl.textContent = `Morgen in ${names}`;
+    }
   }
 }
 
@@ -146,6 +189,9 @@ function analyze(rows) {
   const windiest = rows.reduce((a, b) => (b.wind > a.wind ? b : a));
   const rainiest = rows.reduce((a, b) => (b.rainProbability > a.rainProbability ? b : a));
   const hottest = rows.reduce((a, b) => (b.apparent > a.apparent ? b : a));
+  // Echte (nicht gefühlte) Tiefst- und Höchsttemperaturen bestimmen
+  const coldestTrue = rows.reduce((a, b) => (b.temperature < a.temperature ? b : a));
+  const hottestTrue = rows.reduce((a, b) => (b.temperature > a.temperature ? b : a));
   // berechne Basislevel für jede Stunde
   const baseNeed = Math.max(
     ...rows.map((row) => calculateNeed(row.apparent, row.wind, row.rainProbability))
@@ -160,7 +206,16 @@ function analyze(rows) {
     needLevel = Math.max(1, needLevel - 1);
   }
   const outfit = buildOutfit(needLevel);
-  return { coldest, windiest, rainiest, hottest, needLevel, outfit };
+  return {
+    coldest,
+    windiest,
+    rainiest,
+    hottest,
+    coldestTrue,
+    hottestTrue,
+    needLevel,
+    outfit
+  };
 }
 
 // Fenster der Stunden von jetzt bis 18:00 (oder erste 8 Stunden, falls später)
@@ -257,12 +312,20 @@ function renderCard(result, index) {
     </div>
     <div class="quick-grid">
       <div class="quick-item">
-        <span class="quick-label">🌡️ kältester Punkt</span>
+        <span class="quick-label">🌡️ gefühlte Tiefsttemperatur</span>
         <span class="quick-value">${analysis.coldest.apparent.toFixed(1)} °C</span>
       </div>
       <div class="quick-item">
-        <span class="quick-label">🔥 wärmster Punkt</span>
+        <span class="quick-label">🔥 gefühlte Höchsttemperatur</span>
         <span class="quick-value">${analysis.hottest.apparent.toFixed(1)} °C</span>
+      </div>
+      <div class="quick-item">
+        <span class="quick-label">🌡️ Tiefsttemperatur</span>
+        <span class="quick-value">${analysis.coldestTrue.temperature.toFixed(1)} °C</span>
+      </div>
+      <div class="quick-item">
+        <span class="quick-label">🔥 Höchsttemperatur</span>
+        <span class="quick-value">${analysis.hottestTrue.temperature.toFixed(1)} °C</span>
       </div>
       <div class="quick-item">
         <span class="quick-label">💨 stärkster Wind</span>
@@ -274,9 +337,12 @@ function renderCard(result, index) {
       </div>
     </div>
     <p class="reason">
-      Grundlage: kältester Punkt ${analysis.coldest.apparent.toFixed(1)} °C, wärmster Punkt ${analysis.hottest.apparent.toFixed(1)} °C,
-      Wind bis ${Math.round(analysis.windiest.wind)} km/h und Regenrisiko bis
-      ${Math.round(analysis.rainiest.rainProbability)} %.
+      Grundlage: gefühlte Tiefsttemperatur ${analysis.coldest.apparent.toFixed(1)} °C,
+      gefühlte Höchsttemperatur ${analysis.hottest.apparent.toFixed(1)} °C,
+      Tiefsttemperatur ${analysis.coldestTrue.temperature.toFixed(1)} °C,
+      Höchsttemperatur ${analysis.hottestTrue.temperature.toFixed(1)} °C,
+      Wind bis ${Math.round(analysis.windiest.wind)} km/h und
+      Regenrisiko bis ${Math.round(analysis.rainiest.rainProbability)} %.
     </p>
     <div class="chart-wrap">
       <canvas id="chart-${index}" height="160"></canvas>
@@ -428,7 +494,104 @@ function initDayToggle() {
   updateDayToggle();
 }
 
+// Erstellt die Optionen der Länder und füllt die Dropdowns für die Stadtauswahl
+function buildCitySelector() {
+  // Stelle sicher, dass die Select-Elemente existieren
+  if (!countrySelectEl || !citySelectEl) return;
+  // Liste der Länder und Namen initialisieren
+  countrySelectEl.innerHTML = `<option value="">Land wählen …</option>`;
+  citySelectEl.innerHTML = `<option value="">Stadt wählen …</option>`;
+  citySelectEl.disabled = true;
+  // Erstelle eindeutige Länderliste über Map
+  const uniqueCountries = Array.from(
+    predefinedCities.reduce((acc, c) => {
+      acc.set(c.countryCode, c.countryName);
+      return acc;
+    }, new Map())
+  );
+  // Sortiere alphabetisch nach Ländernamen
+  uniqueCountries.sort((a, b) => a[1].localeCompare(b[1], "de-DE"));
+  uniqueCountries.forEach(([code, name]) => {
+    const option = document.createElement("option");
+    option.value = code;
+    option.textContent = name;
+    countrySelectEl.appendChild(option);
+  });
+}
+
+// Aktualisiert die Liste der Städte, wenn ein Land ausgewählt ist
+function updateCityOptions(countryCode) {
+  if (!citySelectEl) return;
+  citySelectEl.innerHTML = `<option value="">Stadt wählen …</option>`;
+  if (!countryCode) {
+    citySelectEl.disabled = true;
+    return;
+  }
+  const citiesForCountry = predefinedCities
+    .filter((c) => c.countryCode === countryCode)
+    .sort((a, b) => a.name.localeCompare(b.name, "de-DE"));
+  citiesForCountry.forEach((c) => {
+    const option = document.createElement("option");
+    option.value = `${c.name}|${c.latitude}|${c.longitude}`;
+    option.textContent = c.name;
+    citySelectEl.appendChild(option);
+  });
+  citySelectEl.disabled = false;
+}
+
+// Fügt eine Stadt hinzu, sofern sie noch nicht im Array vorhanden ist
+function addCity(name, lat, lon) {
+  // Verhindere Duplikate
+  if (cities.some((c) => c.name === name)) return;
+  cities.push({ name: name, latitude: parseFloat(lat), longitude: parseFloat(lon) });
+  updateCurrentTime();
+  loadAll();
+}
+
+// Initialisiert den Plus-Button und das Dropdown für die Stadtauswahl
+function initCitySelector() {
+  if (!addCityBtn || !citySelectorEl) return;
+  buildCitySelector();
+  addCityBtn.addEventListener("click", () => {
+    citySelectorEl.classList.toggle("hidden");
+    // Beim Öffnen Inputs zurücksetzen
+    if (!citySelectorEl.classList.contains("hidden")) {
+      countrySelectEl.value = "";
+      citySelectEl.innerHTML = `<option value="">Stadt wählen …</option>`;
+      citySelectEl.disabled = true;
+    }
+  });
+  // Klick außerhalb des Selectors schließt das Dropdown
+  document.addEventListener("click", (e) => {
+    const target = e.target;
+    if (
+      citySelectorEl &&
+      !citySelectorEl.contains(target) &&
+      target !== addCityBtn
+    ) {
+      citySelectorEl.classList.add("hidden");
+    }
+  });
+  // Reagiere auf Länderwechsel
+  countrySelectEl.addEventListener("change", (e) => {
+    updateCityOptions(e.target.value);
+  });
+  // Reagiere auf Stadtauswahl
+  citySelectEl.addEventListener("change", (e) => {
+    const value = e.target.value;
+    if (!value) return;
+    const [name, lat, lon] = value.split("|");
+    addCity(name, lat, lon);
+    citySelectorEl.classList.add("hidden");
+    countrySelectEl.value = "";
+    citySelectEl.innerHTML = `<option value="">Stadt wählen …</option>`;
+    citySelectEl.disabled = true;
+  });
+}
+
 // Starte direkt beim Laden der Seite
 loadAll();
 // Initialisiere den Tagesumschalter
 initDayToggle();
+// Initialisiere die Städteauswahl für das Hinzufügen neuer Orte
+initCitySelector();

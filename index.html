@@ -22,11 +22,30 @@
       <header class="hero">
         <p class="eyebrow">DailyWear</p>
         <h1 id="title-day">Heute in Gießen &amp; Frankfurt</h1>
-        <!-- Umschalter zwischen heute und morgen -->
-        <nav class="date-toggle" id="date-toggle">
-          <button data-offset="0" class="active">Heute</button>
-          <button data-offset="1">Morgen</button>
-        </nav>
+        <div class="hero-actions">
+          <!-- Umschalter zwischen heute und morgen -->
+          <nav class="date-toggle" id="date-toggle">
+            <button data-offset="0" class="active">Heute</button>
+            <button data-offset="1">Morgen</button>
+          </nav>
+          <!-- Button zum Hinzufügen weiterer Städte -->
+          <button class="icon-button" id="add-city-btn" aria-label="Stadt hinzufügen">+</button>
+          <!-- Dropdown zur Stadtauswahl -->
+          <div id="city-selector" class="city-selector hidden">
+            <div class="selector-row">
+              <label for="country-select">Land</label>
+              <select id="country-select">
+                <option value="">Land wählen …</option>
+              </select>
+            </div>
+            <div class="selector-row">
+              <label for="city-select">Stadt</label>
+              <select id="city-select" disabled>
+                <option value="">Stadt wählen …</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <!-- Aktuelle Uhrzeit wird durch das Skript gesetzt -->
         <p id="current-time" class="current-time"></p>
       </header>
